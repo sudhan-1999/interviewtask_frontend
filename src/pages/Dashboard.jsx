@@ -8,18 +8,31 @@ export default function Dashboard() {
   const [code, setCode] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
   const [search, setSearch] = useState("");
+const [loading, setLoading] = useState(true);
+const [isCreating, setIsCreating] = useState(false);
+
+const [filterCode, setFilterCode] = useState("");
+const [filterUrl, setFilterUrl] = useState("");
 
 
-  const fetchLinks = async () => {
+  /*const fetchLinks = async () => {
     const res = await API.get("/links");
     setLinks(res.data);
-  };
+  };*/
+const fetchLinks = async () => {
+  setLoading(true); // START LOADING
+
+  const res = await API.get("/links");
+  setLinks(res.data);
+
+  setLoading(false); // DONE
+};
 
   useEffect(() => {
     fetchLinks();
   }, []);
 
-  const createLink = async (e) => {
+  /*const createLink = async (e) => {
     e.preventDefault();
     try {
         console.log("code:", code);
@@ -30,7 +43,23 @@ export default function Dashboard() {
     } catch (err) {
       setErrorMsg(err.response?.data?.error || "Error creating link");
     }
-  };
+  };*/
+const createLink = async (e) => {
+  e.preventDefault();
+  setErrorMsg("");
+  setIsCreating(true); // START LOADING
+
+  try {
+    await API.post("/links", { url, code });
+    setUrl("");
+    setCode("");
+    fetchLinks(); // reload data
+  } catch (err) {
+    setErrorMsg(err.response?.data?.error || "Error creating link");
+  }
+
+  setIsCreating(false); // DONE
+};
 
   const deleteLink = async (shortCode) => {
     await API.delete(`/links/${shortCode}`);
@@ -38,11 +67,20 @@ export default function Dashboard() {
   };
 
   const copyShortUrl = (shortCode) => {
-    const shortUrl = `http://localhost:3000/${shortCode}`;
+    const shortUrl = `https://interviewtask-backend.onrender.com/${shortCode}`;
     navigator.clipboard.writeText(shortUrl);
     alert("Copied: " + shortUrl);
   };
-
+if (loading) {
+    return (
+      <div className="container">
+        <h1>TinyLink — Dashboard</h1>
+        <div className="card" style={{ textAlign: "center", padding: "30px" }}>
+          <p style={{ fontSize: "18px" }}>Loading links...</p>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="container">
       <h1>TinyLink — Dashboard</h1>
@@ -66,7 +104,9 @@ export default function Dashboard() {
   pattern="[A-Za-z0-9]{6,8}"
 />
 
-          <button className="btn-primary" type="submit">Create</button>
+<button className="btn-primary" type="submit" disabled={isCreating}>
+  {isCreating ? "Creating..." : "Create"}
+</button>
         </form>
 
         {errorMsg && (
@@ -80,7 +120,7 @@ export default function Dashboard() {
 
       <div className="card table-wrapper">
   
-  <div style={{ marginBottom: "15px", display: "flex", justifyContent: "flex-end" }}>
+  {/*<div style={{ marginBottom: "15px", display: "flex", justifyContent: "flex-end" }}>
     <input
       type="text"
       placeholder="Search by code or URL..."
@@ -93,7 +133,35 @@ export default function Dashboard() {
         width: "250px"
       }}
     />
-  </div>
+  </div>*/}
+<div style={{
+  marginBottom: "15px",
+  display: "flex",
+  gap: "10px",
+  flexWrap: "wrap"
+}}>
+  <select
+    value={filterCode}
+    onChange={(e) => setFilterCode(e.target.value)}
+    style={{ padding: "10px", borderRadius: "6px", border: "1px solid #d1d5db" }}
+  >
+    <option value="">Filter by Code</option>
+    {links.map((link) => (
+      <option key={link.code} value={link.code}>{link.code}</option>
+    ))}
+  </select>
+
+  <select
+    value={filterUrl}
+    onChange={(e) => setFilterUrl(e.target.value)}
+    style={{ padding: "10px", borderRadius: "6px", border: "1px solid #d1d5db" }}
+  >
+    <option value="">Filter by URL</option>
+    {links.map((link) => (
+      <option key={link._id} value={link.url}>{link.url}</option>
+    ))}
+  </select>
+</div>
 
   <table>
     <thead>
@@ -108,13 +176,11 @@ export default function Dashboard() {
 
     <tbody>
       {links
-        .filter((link) => {
-          const s = search.toLowerCase();
-          return (
-            link.code.toLowerCase().includes(s) ||
-            link.url.toLowerCase().includes(s)
-          );
-        })
+  .filter((link) => {
+    if (filterCode && link.code !== filterCode) return false;
+    if (filterUrl && link.url !== filterUrl) return false;
+    return true;
+  })
         .map((link) => (
           <tr key={link.code}>
             <td>
